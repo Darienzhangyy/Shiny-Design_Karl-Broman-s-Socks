@@ -3,7 +3,7 @@ library(truncnorm)
 shinyServer(
   function(input, output, session)
   {
-#     observe(
+#      observe(
 #       {
 #         updateSliderInput(session,"n_paired", max = input$n_unique)
 #
@@ -36,7 +36,7 @@ shinyServer(
       {
         gen_model = function(prior_n_socks,prior_prop_pairs)
         {
-          n_picked <- 11
+          n_picked <- input$n_unique
 
             n_pairs <- round(floor(prior_n_socks / 2)*prior_prop_pairs)
             n_odd <- prior_n_socks - prior_prop_pairs *2
@@ -76,13 +76,13 @@ shinyServer(
       {
         par(mfrow=c(1,4))
         #Prior for n_sock
-        hist(t(sims())[,3], freq=FALSE, main="Prior on n_socks",col="green")
+        hist(t(sims())[,3], replace=TRUE, main="Prior on n_socks",col="green")
         #Prior for prop_pairs
-        hist(t(sims())[,6], freq=FALSE, main="Prior on prop_pairs",col="green")
+        hist(t(sims())[,6], replace=TRUE, main="Prior on prop_pairs",col="green")
         #Prior for n_pairs
-        hist(t(sims())[,4], freq=FALSE, main="Resulting prior on n_pairs",col="green")
+        hist(t(sims())[,4], replace=TRUE, main="Resulting prior on n_pairs",col="green")
         #Prior for n_odd
-        hist(t(sims())[,5], freq=FALSE, main="Resulting prior on n_odd",col="green")
+        hist(t(sims())[,5], replace=TRUE, main="Resulting prior on n_odd",col="green")
       }
     )
 
@@ -91,13 +91,13 @@ shinyServer(
       {
         par(mfrow=c(1,4))
         #posterior for n_sock
-        hist(posterior()[,3], freq=FALSE, main="Posteior on n_socks",col="blue")
+        hist(posterior()[,3], replace=TRUE, main="Posteior on n_socks",col="blue")
         #posterior for prop_pairs
-        hist(posterior()[,6], freq=FALSE, main="Posterior on prop_pairs",col="blue")
+        hist(posterior()[,6], replace=TRUE, main="Posterior on prop_pairs",col="blue")
         #posterior for n_pairs
-        hist(posterior()[,4], freq=FALSE, main="Posterior on n_pairs",col="blue")
+        hist(posterior()[,4], replace=TRUE, main="Posterior on n_pairs",col="blue")
         #posterior for n_odd
-        hist(posterior()[,5], freq=FALSE, main="Posterior on n_odd",col="blue")
+        hist(posterior()[,5], replace=TRUE, main="Posterior on n_odd",col="blue")
       }
     )
   }
