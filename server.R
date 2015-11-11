@@ -65,8 +65,10 @@ shinyServer(
     #is used to get the posterior distrbution for the four variables
     posterior = reactive(
       {
-        sims()[sims()[,2]==input$n_paired &
-               sims()[,1]==input$n_unique, ]
+        sock_sim=t(sims())
+        post_sample = sock_sim[sock_sim[,2]==input$n_paired &
+                               sock_sim[,1]==input$n_unique, ]
+        post_sample
       }
     )
 
@@ -74,13 +76,13 @@ shinyServer(
       {
         par(mfrow=c(1,4))
         #Prior for n_sock
-        hist(sims()[,3], freq=FALSE, main="Prior on n_socks",col="green")
+        hist(t(sims())[,3], freq=FALSE, main="Prior on n_socks",col="green")
         #Prior for prop_pairs
-        hist(sims()[,6], freq=FALSE, main="Prior on prop_pairs",col="green")
+        hist(t(sims())[,6], freq=FALSE, main="Prior on prop_pairs",col="green")
         #Prior for n_pairs
-        hist(sims()[,4], freq=FALSE, main="Resulting prior on n_pairs",col="green")
+        hist(t(sims())[,4], freq=FALSE, main="Resulting prior on n_pairs",col="green")
         #Prior for n_odd
-        hist(sims()[,5], freq=FALSE, main="Resulting prior on n_odd",col="green")
+        hist(t(sims())[,5], freq=FALSE, main="Resulting prior on n_odd",col="green")
       }
     )
 
