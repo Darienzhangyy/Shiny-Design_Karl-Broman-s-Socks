@@ -9,11 +9,11 @@ shinyUI(
       "Socks ABC"
     ),
     sidebarPanel(
-      numericInput("n_sims", h4("Simulations:"),value = 1000, min = 100, step = 1),
+      numericInput("n_sims", h4("Simulations:"),value = 5000, min = 100, step = 1),
       hr(),
       h4("Data:"),
-      sliderInput("n_unique", "Unique Socks:", min=0, max=50, value=9, step=1),
-      sliderInput("n_paired", "Paired Socks:", min=0, max=50, value=3, step=1),
+      sliderInput("n_unique", "Unique Socks:", min=0, max=50, value=11, step=1),
+      sliderInput("n_paired", "Paired Socks:", min=0, max=50, value=0, step=1),
       hr(),
       h4("Priors:"),
       selectInput("total_prior", "Prior for total", total_priors),
@@ -41,10 +41,24 @@ shinyUI(
       )
     ),
     mainPanel(
-      h4("Results:"),
-      plotOutput("total_plot"),
+      h4("Priors:"),
+      plotOutput("n_sock_prior"),
       br(),
-      plotOutput("prop_plot")
+      plotOutput("prop_pair_prior"),
+      br(),
+      plotOutput("n_pairs_prior"),
+      br(),
+      plotOutput("n_odd_prior"),
+      br(),
+      h4("Posteriors:"),
+      plotOutput("n_sock_post"),
+      br(),
+      plotOutput("prop_pair_post"),
+      br(),
+      plotOutput("n_pairs_post"),
+      br(),
+      plotOutput("n_odd_post"),
+      br()
     )
   )
 )
