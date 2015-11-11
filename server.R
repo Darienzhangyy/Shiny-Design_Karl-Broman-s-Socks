@@ -69,51 +69,32 @@ shinyServer(
                sims()[,1]==input$n_unique, ]
       }
     )
-#Prior for n_sock
-    output$n_sock_prior = renderPlot(
+
+    output$all_prior = renderPlot(
       {
+        par(mfrow=c(1,4))
+        #Prior for n_sock
         hist(sims()[,3], freq=FALSE, main="Prior on n_socks",col="green")
-      }
-    )
-#Prior for prop_pairs
-    output$prop_pair_prior = renderPlot(
-      {
+        #Prior for prop_pairs
         hist(sims()[,6], freq=FALSE, main="Prior on prop_pairs",col="green")
-      }
-    )
-#Prior for n_pairs
-    output$n_pairs_prior = renderPlot(
-      {
+        #Prior for n_pairs
         hist(sims()[,4], freq=FALSE, main="Resulting prior on n_pairs",col="green")
-      }
-    )
-#Prior for n_odd
-    output$n_odd_prior = renderPlot(
-      {
+        #Prior for n_odd
         hist(sims()[,5], freq=FALSE, main="Resulting prior on n_odd",col="green")
       }
     )
-    #posterior for n_sock
-    output$n_sock_post = renderPlot(
+
+
+    output$all_posterior = renderPlot(
       {
+        par(mfrow=c(1,4))
+        #posterior for n_sock
         hist(posterior()[,3], freq=FALSE, main="Posteior on n_socks",col="blue")
-      }
-    )
-    #posterior for prop_pairs
-    output$prop_pair_post = renderPlot(
-      {
+        #posterior for prop_pairs
         hist(posterior()[,6], freq=FALSE, main="Posterior on prop_pairs",col="blue")
-      }
-    )
-    #posterior for n_pairs
-    output$n_pairs_post = renderPlot(
-      {
+        #posterior for n_pairs
         hist(posterior()[,4], freq=FALSE, main="Posterior on n_pairs",col="blue")
-      }
-    )
-    #posterior for n_odd
-    output$n_odd_post = renderPlot(
-      {
+        #posterior for n_odd
         hist(posterior()[,5], freq=FALSE, main="Posterior on n_odd",col="blue")
       }
     )

@@ -42,23 +42,10 @@ shinyUI(
     ),
     mainPanel(
       h4("Priors:"),
-      plotOutput("n_sock_prior"),
-      br(),
-      plotOutput("prop_pair_prior"),
-      br(),
-      plotOutput("n_pairs_prior"),
-      br(),
-      plotOutput("n_odd_prior"),
+      plotOutput("all_prior"),
       br(),
       h4("Posteriors:"),
-      plotOutput("n_sock_post"),
-      br(),
-      plotOutput("prop_pair_post"),
-      br(),
-      plotOutput("n_pairs_post"),
-      br(),
-      plotOutput("n_odd_post"),
-      br()
+      plotOutput("all_posterior")
     )
   )
 )
