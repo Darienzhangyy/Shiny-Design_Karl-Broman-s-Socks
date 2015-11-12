@@ -9,11 +9,11 @@ shinyUI(
       "Socks ABC"
     ),
     sidebarPanel(
-      numericInput("n_sims", h4("Simulations:"),value = 5000, min = 100, step = 1),
+      numericInput("n_sims", h4("Simulations:"),value = 3000, min = 100, step = 1),
       hr(),
       h4("Data:"),
-      sliderInput("n_unique", "Unique Socks:", min=0, max=50, value=11, step=1),
-      sliderInput("n_paired", "Paired Socks:", min=0, max=50, value=0, step=1),
+      sliderInput("n_total", "Total Socks:", min=0, max=30, value=11),
+      sliderInput("n_paired", "Paired Socks:", min=0, max=30, value=1),
       hr(),
       h4("Priors:"),
       selectInput("total_prior", "Prior for total", total_priors),
@@ -22,11 +22,11 @@ shinyUI(
       h4("Hyperparameters:"),
       conditionalPanel(
         condition="input.total_prior == 'pois'",
-        sliderInput("total_lambda",HTML("Total prior - &lambda;"), value = 50, min=1, max=120)
+        sliderInput("total_lambda",HTML("Total prior - &lambda;"), value = 5, min=1, max=120)
       ),
       conditionalPanel(
         condition="input.total_prior == 'nbinom'",
-        numericInput("total_r",HTML("Total prior - r"), value = 50, min=1, max=120),
+        numericInput("total_r",HTML("Total prior - r"), value = 5, min=1, max=120),
         numericInput("total_p",HTML("Total prior - p"), value = 0.5, min=0, max=1)
       ),
       conditionalPanel(
@@ -36,8 +36,8 @@ shinyUI(
       ),
       conditionalPanel(
         condition="input.prop_prior == 'tnorm'",
-        numericInput("prop_mu",HTML("Proportion prior - &mu;"), value = 0.5, min=NA, max=NA),
-        numericInput("prop_sigma",HTML("Proportion prior - &sigma;"), value = 0.1, min=0, max=NA)
+        numericInput("prop_mu",HTML("Proportion prior - &mu;"), value = 0.5, min=0),
+        numericInput("prop_sigma",HTML("Proportion prior - &sigma;"), value = 0.1, min=0)
       )
     ),
     mainPanel(
