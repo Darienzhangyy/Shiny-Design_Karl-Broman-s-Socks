@@ -124,7 +124,7 @@ shinyServer(
 
         par(mfrow=c(1,4),mar=c(15,3,4,1))
         #posterior for n_sock
-        hist(posterior()[,1],  main="Posteior on n_socks",col="blue",xlab="")
+        hist(posterior()[,1],  main="Posterior on n_socks",col="blue",xlab="")
         abline(v = median(posterior()[,1]), lty = 2, col = "red",lwd=3)
         #posterior for prop_pairs
         hist(posterior()[,2], main="Posterior on prop_pairs",col="blue",xlab="")
@@ -144,16 +144,24 @@ shinyServer(
           dataFrame = data.frame("Medium" = c(round(median(posterior()[,1])),
                                               median(posterior()[,2]),
                                               round(median(posterior()[,3])),
-                                              round(median(posterior()[,4]))))
+                                              round(median(posterior()[,4]))),
+                                 "95 Credible Interval Lower"=c(quantile(posterior()[,1],0.025), 
+                                                                       quantile(posterior()[,2],0.025),
+                                                                       quantile(posterior()[,3],0.025),
+                                                                       quantile(posterior()[,4],0.025)),
+                                 "95 Credible Interval Upper"=c(quantile(posterior()[,1],0.975), 
+                                                                       quantile(posterior()[,2],0.975),
+                                                                       quantile(posterior()[,3],0.975),
+                                                                       quantile(posterior()[,4],0.975)))
           rownames(dataFrame) = c("Number of Socks", "Proportion of Pairs", "Number of Pairs",
                                   "Number of Odd")
           dataFrame
-      }
-    )
-
-    output$text1 <- renderText({paste("You have get", input$n_total,"socks.")})
+     }
+)
+    output$text1 <- renderText({paste("You have got", input$n_total,"socks.")})
     output$text2 <- renderText({paste(input$n_paired,"of them are paired.")})
     output$text3 <- renderText({paste("You can predict that there are",
                                 round(median(posterior()[,1])), "socks in all.")})
+    output$text4 <- renderText("The true number of total socks is 46 with 21 pairs and 3 sigletons.")
   }
 )
