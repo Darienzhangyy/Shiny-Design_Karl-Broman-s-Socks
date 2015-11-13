@@ -27,7 +27,7 @@ shinyUI(
       ),
       conditionalPanel(
         condition="input.total_prior == 'pois'",
-        sliderInput("total_lambda",HTML("Total prior - &lambda;"), value = 5, min=1, max=120)
+        sliderInput("total_lambda",HTML("Total prior - &lambda;"), value = 44, min=11, max=120)
       ),
       conditionalPanel(
         condition="input.prop_prior == 'beta'",
@@ -36,8 +36,8 @@ shinyUI(
       ),
       conditionalPanel(
         condition="input.prop_prior == 'tnorm'",
-        numericInput("prop_mu",HTML("Proportion prior - &mu;"), value = 0.5, min=0),
-        numericInput("prop_sigma",HTML("Proportion prior - &sigma;"), value = 0.1, min=0)
+        numericInput("prop_mu",HTML("Proportion prior - &mu;"), value = 0.9, min=0),
+        numericInput("prop_sigma",HTML("Proportion prior - &sigma;"), value = 0.001, min=0)
       )
     ),
     mainPanel(

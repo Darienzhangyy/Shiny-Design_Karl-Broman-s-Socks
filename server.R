@@ -23,7 +23,7 @@ shinyServer(
         if (input$total_prior == "pois")
         {
           d_n_sock = unlist(mclapply(1:10, 
-                                     function(x) mcparallel(rpois(input$n_sims/10, input$total_lambda)), 
+                                     function(x) rpois(input$n_sims/10, input$total_lambda), 
                                      mc.cores = 24))
           #d_n_sock = rpois(input$n_sims, input$total_lambda)
         } else {
@@ -47,9 +47,9 @@ shinyServer(
                                         mc.cores = 24))
           #d_prop_pair = rbeta(input$n_sims, input$prop_alpha, input$prop_beta)
         } else {
-          d_prop_pair = unlist(mclapply(1:10, function(x) mcparallel(rtruncnorm(input$n_sims/10,
-                                                                                0,1,input$prop_mu,input$prop_sigma)),
-                                        mc.cores = 24))
+          d_prop_pair = unlist(mclapply(1:10, function(x) rtruncnorm(input$n_sims/10,
+                                                                                0,1,input$prop_mu,input$prop_sigma),
+                                    mc.cores = 24))
           #d_prop_pair = unlist(mclapply(1:10, function(x) rtruncnorm(input$n_sims/10,
           #                                                           0,1,input$prop_mu,input$prop_sigma),
           #                              mc.cores = 24))
@@ -101,19 +101,19 @@ shinyServer(
         #pick out the rows for posterior distribution
         #mclapply(priors(), function(x) gen_model(x[1],x[2],x[3],x[4]), mc.cores = 10)
         
-        n_chuncks = 8
-        steps = floor(seq(1,input$n_sims,len=n_chuncks+1))
+        #n_chuncks = 8
+        #steps = floor(seq(1,input$n_sims,len=n_chuncks+1))
         
-        l = list()
-        for(i in 1:n_chuncks)
-        {
-          l[[i]] = priors()[steps[i]:steps[i+1],]
-        }
+        #l = list()
+        #for(i in 1:n_chuncks)
+        #{
+          #l[[i]] = priors()[steps[i]:steps[i+1],]
+        #}
         
         
-        unlist(mclapply(l, function(x) apply(x,1, function(x) gen_model(x[1],x[2],x[3],x[4])), mc.cores = 8))
+        #unlist(mclapply(l, function(x) apply(x,1, function(x) gen_model(x[1],x[2],x[3],x[4])), mc.cores = 8))
         
-        #apply(priors(),1, function(x) gen_model(x[1],x[2],x[3],x[4]))
+        apply(priors(),1, function(x) gen_model(x[1],x[2],x[3],x[4]))
       }
     )
     
