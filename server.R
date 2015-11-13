@@ -194,6 +194,6 @@ shinyServer(
     output$text2 <- renderText({paste(input$n_paired,"of them are paired.")})
     output$text3 <- renderText({paste("You can predict that there are",
                                       round(median(posterior()[,1])), "socks in all.")})
-    output$text4 <- renderText("The true number of total socks is 45 with 21 pairs and 3 sigletons.")
+    output$text4 <- renderText("The true number of total socks is 45 with 21 pairs and 3 singletons.")
   }
 )
