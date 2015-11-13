@@ -153,6 +153,7 @@ shinyServer(
                                                                        quantile(posterior()[,2],0.975),
                                                                        quantile(posterior()[,3],0.975),
                                                                        quantile(posterior()[,4],0.975)))
+          colnames(dataFrame)=c("Median", "95% Credible Interval Lower Bound", "95% Credible Interval Upper Bound")
           rownames(dataFrame) = c("Number of Socks", "Proportion of Pairs", "Number of Pairs",
                                   "Number of Odd")
           dataFrame

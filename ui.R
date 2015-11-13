@@ -51,7 +51,8 @@ shinyUI(
       tableOutput("postTable"),
       textOutput("text1"),
       textOutput("text2"),
-      textOutput("text3")
+      textOutput("text3"),
+      textOutput("text4")
     )
   )
 )
