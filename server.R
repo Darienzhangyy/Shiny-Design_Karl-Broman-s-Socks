@@ -135,15 +135,19 @@ shinyServer(
         #Prior for n_sock
         hist(priors()[,1],  main="Prior on n_socks",col="green",xlab="")
         abline(v = median(priors()[,1]), lty = 2, col = "red", lwd=3)
+        abline(v = quantile(priors()[,1],c(0.025,0.975)), lty=3, lwd=3, col="black")
         #Prior for prop_pairs
         hist(priors()[,2],  main="Prior on prop_pairs",col="green",xlab="")
         abline(v = median(priors()[,2]), lty = 2, col = "red", lwd=3)
+        abline(v = quantile(priors()[,2],c(0.025,0.975)), lty=3, col="black",lwd=3)
         #Prior for n_pairs
         hist(priors()[,3],  main="Resulting prior on n_pairs",col="green",xlab="")
         abline(v = median(priors()[,3]), lty = 2, col = "red", lwd=3)
+        abline(v = quantile(priors()[,3],c(0.025,0.975)), lty=3,lwd=3, col="black")
         #Prior for n_odd
         hist(priors()[,4], main="Resulting prior on n_odd",col="green",xlab="")
         abline(v = median(priors()[,4]), lty = 2, col = "red", lwd=3)
+        abline(v = quantile(priors()[,4],c(0.025,0.975)), lty=3, lwd=3,col="black")
       }
     )
     
@@ -157,15 +161,19 @@ shinyServer(
         #posterior for n_sock
         hist(posterior()[,1],  main="Posterior on n_socks",col="blue",xlab="")
         abline(v = median(posterior()[,1]), lty = 2, col = "red",lwd=3)
+        abline(v = quantile(posterior()[,1],c(0.025,0.975)), lty=3,lwd=3, col="black")
         #posterior for prop_pairs
         hist(posterior()[,2], main="Posterior on prop_pairs",col="blue",xlab="")
         abline(v = median(posterior()[,2]), lty = 2, col = "red",lwd=3)
+        abline(v = quantile(posterior()[,2],c(0.025,0.975)), lty=3,lwd=3,col="black")
         #posterior for n_pairs
         hist(posterior()[,3], main="Posterior on n_pairs",col="blue",xlab="")
         abline(v = median(posterior()[,3]), lty = 2, col = "red",lwd=3)
+        abline(v = quantile(posterior()[,3],c(0.025,0.975)), lty=3,lwd=3,col="black")
         #posterior for n_odd
         hist(posterior()[,4], main="Posterior on n_odd",col="blue",xlab="")
         abline(v = median(posterior()[,4]), lty = 2, col = "red",lwd=3)
+        abline(v = quantile(posterior()[,4],c(0.025,0.975)), lty=3, lwd=3,col="black")
       }
     )
     
