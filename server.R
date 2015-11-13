@@ -100,7 +100,20 @@ shinyServer(
         #Creating a column of simulated number of pairs so as to be used later to
         #pick out the rows for posterior distribution
         #mclapply(priors(), function(x) gen_model(x[1],x[2],x[3],x[4]), mc.cores = 10)
-        apply(priors(),1, function(x) gen_model(x[1],x[2],x[3],x[4]))
+        
+        n_chuncks = 8
+        steps = floor(seq(1,input$n_sims,len=n_chuncks+1))
+        
+        l = list()
+        for(i in 1:n_chuncks)
+        {
+          l[[i]] = priors()[steps[i]:steps[i+1],]
+        }
+        
+        
+        unlist(mclapply(l, function(x) apply(x,1, function(x) gen_model(x[1],x[2],x[3],x[4])), mc.cores = 8))
+        
+        #apply(priors(),1, function(x) gen_model(x[1],x[2],x[3],x[4]))
       }
     )
     
@@ -181,6 +194,6 @@ shinyServer(
     output$text2 <- renderText({paste(input$n_paired,"of them are paired.")})
     output$text3 <- renderText({paste("You can predict that there are",
                                       round(median(posterior()[,1])), "socks in all.")})
-    output$text4 <- renderText("The true number of total socks is 46 with 21 pairs and 3 sigletons.")
+    output$text4 <- renderText("The true number of total socks is 45 with 21 pairs and 3 sigletons.")
   }
 )
