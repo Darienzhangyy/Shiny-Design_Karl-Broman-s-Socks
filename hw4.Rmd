@@ -2,7 +2,7 @@
 title: "Homework 4"
 author: "Eclectic Eagle Scouts"
 date: "November 12, 2015"
-output: pdf_document
+output: html_document
 ---
 
 
@@ -24,4 +24,35 @@ To implement ABC, user-specified hyperparameters are used to generate data the t
 
 **Task 2**
 
-The second portion of this assignment involves optimizing the code for speed. Despite the use of 'Tiny Data', the ABC approach is notoriously sluggish and inefficient. To obtain a manageable run time, we took two steps. First, we leverage the power of parallel processing in the generation of all simulated priors. This is accomplished by breaking the user-specified number of simulations into 10 sets and simultaneously feeding each to multiple cores via `mclapply`, before unlisting the result. Second, we take a very similar tactic when feeding the priors through the generative model, splitting them into 8 subsets and running `mclapply`.
+By implementing Approximate Bayesian Computation, we can successfully analyze how total many socks are there. However, large huge number of simulation and computation slow down our analysis. To improve the efficiency, we choose to use parallelization to make our APP speed up.
+
+mclapply is a parallelized version of lapply, it returns a list of the same length as X, each element of which is the result of applying FUN to the corresponding element of X.
+
+```{r, results=FALSE, error=FALSE, warning=FALSE}
+library(parallel)
+#parallelize number of socks
+d_n_sock = unlist(mclapply(1:10,function(x) 
+                             rpois(input$n_sims/10, input$total_lambda),
+                                     mc.cores = 24))
+d_n_sock = unlist(mclapply(1:10, function(x) rnbinom(input$n_sims/10,
+                             mu =input$total_mu,
+                              size=size1),mc.cores = 24))
+#parallelize number of pair of socks
+d_prop_pair = unlist(mclapply(1:10, function(x) rbeta(input$n_sims/10,
+                                       input$prop_alpha, input$prop_beta),
+                                        mc.cores = 24))
+d_prop_pair = unlist(mclapply(1:10, function(x) rtruncnorm(input$n_sims/10,
+                                       0,1,input$prop_mu,input$prop_sigma),
+                                    mc.cores = 24))
+```
+
+
+Also, we split prior into 8 chunks as list l, and then exert mclapply to, which would accelerate the speed of gen_model function. 
+
+```{r, results=FALSE, error=FALSE, warning=FALSE}
+#use parallelization to execute function
+unlist(mclapply(l, function(x) apply(x,1, function(x) gen_model(x[1],x[2],x[3],x[4])), mc.cores = 8))
+```
+
+Then, when we run the App, parallelization makes our App much faster than before.
+
