@@ -13,7 +13,7 @@ shinyUI(
       hr(),
       h4('Data:'),
       sliderInput('n_total', 'Total number of socks pulled:', min=0, max=30, value=11),
-      sliderInput('n_paired', 'Number of sock pairs found:', min=0, max=15, value=1),
+      sliderInput('n_paired', 'Number of sock pairs found:', min=0, max=15, value=0),
       hr(),
       h4('Priors:'),
       selectInput('total_prior', 'Prior for total number of socks:', total_priors),
