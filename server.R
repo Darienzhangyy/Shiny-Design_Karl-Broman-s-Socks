@@ -243,10 +243,10 @@ shinyServer(
 
     output$postTable = renderTable(
       {
-        dataFrame = data.frame("Medium" = c(round(median(posterior()[,1])),
+        dataFrame = data.frame("Medium" = c(round(median(posterior()[,1]),digits = 0),
                                             median(posterior()[,2]),
-                                            round(median(posterior()[,3])),
-                                            round(median(posterior()[,4]))),
+                                            round(median(posterior()[,3]),digits = 0),
+                                            round(median(posterior()[,4]),digits = 0)),
                                "95 Credible Interval Lower"=c(quantile(posterior()[,1],0.025),
                                                               quantile(posterior()[,2],0.025),
                                                               quantile(posterior()[,3],0.025),
@@ -259,12 +259,15 @@ shinyServer(
         rownames(dataFrame) = c("Number of Socks", "Proportion of Pairs", "Number of Pairs",
                                 "Number of Odd")
         dataFrame
-      }
+      },align='cccc'
     )
     output$text1 <- renderText({paste("You have got", input$n_total,"socks.")})
     output$text2 <- renderText({paste(input$n_paired,"of them are paired.")})
     output$text3 <- renderText({paste("You can predict that there are",
                                       round(median(posterior()[,1])), "socks in all.")})
-    output$text4 <- renderText("The true number of total socks is 45 with 21 pairs and 3 singletons.")
-  }
+
+    output$text4 <- renderText(if (input$showtruevalue==T){"The true number of total socks is 45 with 21 pairs and 3 singletons."}
+                               else{"(check the box on the left to see the true values of the 11 singletons case)"}
+                               )
+    }
 )

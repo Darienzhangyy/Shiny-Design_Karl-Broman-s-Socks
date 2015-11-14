@@ -38,7 +38,8 @@ shinyUI(
         condition="input.prop_prior == 'tnorm'",
         numericInput("prop_mu",HTML("Proportion prior - &mu;"), value = 0.9, min=0),
         numericInput("prop_sigma",HTML("Proportion prior - &sigma;"), value = 0.001, min=0)
-      )
+      ),
+      checkboxInput("showtruevalue","Show true values of 11 singletons case")
     ),
     mainPanel(
       h4("Priors:"),
