@@ -9,13 +9,13 @@ shinyServer(
     observe(
       {
         updateSliderInput(session,"n_paired", max = round(floor(input$n_total/ 2)))
-        
+
       }
     )
-    
+
     priors = reactive(
       {
-        
+
         #About n_socks, the number of socks in Karl Broman???s laundry
         #must be positive and discrete.
         #It is reasonable to choose a Poisson distribution as a prior
@@ -24,18 +24,18 @@ shinyServer(
         d_n_sock = integer()
         if (input$total_prior == "pois")
         {
-          d_n_sock = unlist(mclapply(1:10, 
-                                     function(x) rpois(input$n_sims/10, input$total_lambda), 
+          d_n_sock = unlist(mclapply(1:10,
+                                     function(x) rpois(input$n_sims/10, input$total_lambda),
                                      mc.cores = 24))
           #d_n_sock = rpois(input$n_sims, input$total_lambda)
         } else {
           size1 = -input$total_mu^2 / (input$total_mu - input$total_sd^2)
-          d_n_sock = unlist(mclapply(1:10, 
+          d_n_sock = unlist(mclapply(1:10,
                                      function(x) rnbinom(input$n_sims/10,mu = input$total_mu, size = size1),
                                      mc.cores = 24))
           #d_n_sock = rnbinom(input$n_sims,mu = input$total_mu, size = size1)
         }
-        
+
         #Instead of putting priors on n_paired and the resulting n_odd, we can put prior on
         #the proportion of paired socks.
         #Since proportion should be bigger than 0 and smaller than 1, we can use beta distribution
@@ -57,7 +57,7 @@ shinyServer(
           #                              mc.cores = 24))
           #d_prop_pair = rtruncnorm(input$n_sims,0,1,input$prop_mu,input$prop_sigma)
         }
-        
+
         #With the prior on proportion, we can easily calculate the priors for n_pair
         #and n_odd. Thus we can get four prior distributions where these two are what
         #we most care about. By simulation afterward and picking out the rows with same
@@ -65,14 +65,14 @@ shinyServer(
         #and get the posterior distribution based on the picked rows.
         d_pair = integer()
         d_pair = round(floor(d_n_sock / 2)*d_prop_pair)
-        
+
         d_odd = integer()
         d_odd = d_n_sock - d_pair *2
-        
+
         data.frame(total = d_n_sock, prop = d_prop_pair, n_pair = d_pair, n_odd = d_odd)
       }
     )
-    
+
     #The purpose of simulation is to create a column of simulated number of pairs,
     #which can be used to be compared with user-input "n_paired" to get the rows
     #for getting the posterior distribution
@@ -81,44 +81,45 @@ shinyServer(
         gen_model = function(prior_n_socks,prior_prop_pairs, prior_pair, prior_odd)
         {
           #n_picked <- input$n_unique+2*input$n_paired
-          
+
           # Simulating picking out n_picked socks
           socks <- rep(seq_len(prior_pair +  prior_odd), rep(c(2, 1),
                                                              c(prior_pair, prior_odd)))
-          
+
           picked_socks <- sample(socks, size =  min(input$n_total, prior_n_socks))
-          
+
           sock_counts <- table(picked_socks)
-          
+
           result=sum(sock_counts == 2)
-          
+
           #             c(unique = sum(sock_counts == 1), pairs = sum(sock_counts == 2),
           #           n_socks = prior_n_socks, n_pairs = prior_pair, n_odd = prior_odd,
           #           prop_pairs = prior_prop_pairs)
-          
+
           return(result)
         }
-        
+
         #Creating a column of simulated number of pairs so as to be used later to
         #pick out the rows for posterior distribution
         #mclapply(priors(), function(x) gen_model(x[1],x[2],x[3],x[4]), mc.cores = 10)
-        
-        #n_chuncks = 8
-        #steps = floor(seq(1,input$n_sims,len=n_chuncks+1))
-        
-        #l = list()
-        #for(i in 1:n_chuncks)
-        #{
-          #l[[i]] = priors()[steps[i]:steps[i+1],]
-        #}
-        
-        
-        #unlist(mclapply(l, function(x) apply(x,1, function(x) gen_model(x[1],x[2],x[3],x[4])), mc.cores = 8))
-        
-        apply(priors(),1, function(x) gen_model(x[1],x[2],x[3],x[4]))
+
+        n_chuncks = 8
+        steps = floor(seq(1,input$n_sims,len=n_chuncks+1))
+
+        l = list()
+        l[[1]] = priors()[steps[1]:steps[2],]
+        for(i in 2:n_chuncks)
+        {
+          l[[i]] = priors()[(steps[i]+1):steps[i+1],]
+        }
+
+
+        unlist(mclapply(l, function(x) apply(x,1, function(x) gen_model(x[1],x[2],x[3],x[4])), mc.cores = 8))
+
+        #apply(priors(),1, function(x) gen_model(x[1],x[2],x[3],x[4]))
       }
     )
-    
+
     #pick out the rows from the dataframe result from prior() where "pairs" "variable"
     #equals the number of pairs user input, aka, n_paired
     #Later on the data frame drawn like this (with the same "pair" values)
@@ -127,130 +128,130 @@ shinyServer(
       {
         #sock_sim=t(sims())
         priors()[sims()==input$n_paired, ]
-        
+
       }
     )
-    
+
     output$all_prior = renderPlot(
       {
-        #par(mfrow=c(1,4),mar=c(15,3,4,1))
+        par(mfrow=c(1,4),mar=c(15,3,4,1))
         #Prior for n_sock
-        p1 = ggplot(priors(), aes(x=total)) + 
-          geom_histogram(fill='#00BA38') + 
-          geom_vline(aes(xintercept=median(total)), linetype=5) + 
-          geom_rect(aes(xmin=0, xmax=unname(quantile(total, 0.025)), 
-                   ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
-          geom_rect(aes(xmin=unname(quantile(total, 0.975)), xmax=Inf, 
-                        ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
-        #hist(priors()[,1],  main="Prior on n_socks",col="green",xlab="")
-        #abline(v = median(priors()[,1]), lty = 2, col = "red", lwd=3)
-        #abline(v = quantile(priors()[,1],c(0.025,0.975)), lty=3, lwd=3, col="black")
+#         p1 = ggplot(priors(), aes(x=total)) +
+#           geom_histogram(fill='#00BA38') +
+#           geom_vline(aes(xintercept=median(total)), linetype=5) +
+#           geom_rect(aes(xmin=0, xmax=unname(quantile(total, 0.025)),
+#                    ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
+#           geom_rect(aes(xmin=unname(quantile(total, 0.975)), xmax=Inf,
+#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
+        hist(priors()[,1],  main="Prior on n_socks",col="green",xlab="")
+        abline(v = median(priors()[,1]), lty = 2, col = "red", lwd=3)
+        abline(v = quantile(priors()[,1],c(0.025,0.975)), lty=3, lwd=3, col="black")
         #Prior for prop_pairs
-        p2 = ggplot(priors(), aes(x=prop)) + 
-          geom_histogram(fill='#00BA38') + 
-          geom_vline(aes(xintercept=median(prop)), linetype=5) + 
-          geom_rect(aes(xmin=0, xmax=unname(quantile(prop, 0.025)), 
-                        ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
-          geom_rect(aes(xmin=unname(quantile(prop, 0.975)), xmax=Inf, 
-                        ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
-        #hist(priors()[,2],  main="Prior on prop_pairs",col="green",xlab="")
-        #abline(v = median(priors()[,2]), lty = 2, col = "red", lwd=3)
-        #abline(v = quantile(priors()[,2],c(0.025,0.975)), lty=3, col="black",lwd=3)
+#         p2 = ggplot(priors(), aes(x=prop)) +
+#           geom_histogram(fill='#00BA38') +
+#           geom_vline(aes(xintercept=median(prop)), linetype=5) +
+#           geom_rect(aes(xmin=0, xmax=unname(quantile(prop, 0.025)),
+#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
+#           geom_rect(aes(xmin=unname(quantile(prop, 0.975)), xmax=Inf,
+#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
+        hist(priors()[,2],  main="Prior on prop_pairs",col="green",xlab="")
+        abline(v = median(priors()[,2]), lty = 2, col = "red", lwd=3)
+        abline(v = quantile(priors()[,2],c(0.025,0.975)), lty=3, col="black",lwd=3)
         #Prior for n_pairs
-        p3 = ggplot(priors(), aes(x=n_pair)) + 
-          geom_histogram(fill='#00BA38') + 
-          geom_vline(aes(xintercept=median(n_pair)), linetype=5) + 
-          geom_rect(aes(xmin=0, xmax=unname(quantile(n_pair, 0.025)), 
-                        ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
-          geom_rect(aes(xmin=unname(quantile(n_pair, 0.975)), xmax=Inf, 
-                        ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
-        #hist(priors()[,3],  main="Resulting prior on n_pairs",col="green",xlab="")
-        #abline(v = median(priors()[,3]), lty = 2, col = "red", lwd=3)
-        #abline(v = quantile(priors()[,3],c(0.025,0.975)), lty=3,lwd=3, col="black")
+#         p3 = ggplot(priors(), aes(x=n_pair)) +
+#           geom_histogram(fill='#00BA38') +
+#           geom_vline(aes(xintercept=median(n_pair)), linetype=5) +
+#           geom_rect(aes(xmin=0, xmax=unname(quantile(n_pair, 0.025)),
+#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
+#           geom_rect(aes(xmin=unname(quantile(n_pair, 0.975)), xmax=Inf,
+#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
+        hist(priors()[,3],  main="Resulting prior on n_pairs",col="green",xlab="")
+        abline(v = median(priors()[,3]), lty = 2, col = "red", lwd=3)
+        abline(v = quantile(priors()[,3],c(0.025,0.975)), lty=3,lwd=3, col="black")
         #Prior for n_odd
-        p4 = ggplot(priors(), aes(x=n_odd)) + 
-          geom_histogram(fill='#00BA38') + 
-          geom_vline(aes(xintercept=median(n_odd)), linetype=5) + 
-          geom_rect(aes(xmin=0, xmax=unname(quantile(n_odd, 0.025)), 
-                        ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
-          geom_rect(aes(xmin=unname(quantile(n_odd, 0.975)), xmax=Inf, 
-                        ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
-        #hist(priors()[,4], main="Resulting prior on n_odd",col="green",xlab="")
-        #abline(v = median(priors()[,4]), lty = 2, col = "red", lwd=3)
-        #abline(v = quantile(priors()[,4],c(0.025,0.975)), lty=3, lwd=3,col="black")
-        p_all = grid.arrange(p1, p2, p3, p4, ncol=2)
-        print(p_all)
+#         p4 = ggplot(priors(), aes(x=n_odd)) +
+#           geom_histogram(fill='#00BA38') +
+#           geom_vline(aes(xintercept=median(n_odd)), linetype=5) +
+#           geom_rect(aes(xmin=0, xmax=unname(quantile(n_odd, 0.025)),
+#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
+#           geom_rect(aes(xmin=unname(quantile(n_odd, 0.975)), xmax=Inf,
+#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
+        hist(priors()[,4], main="Resulting prior on n_odd",col="green",xlab="")
+        abline(v = median(priors()[,4]), lty = 2, col = "red", lwd=3)
+        abline(v = quantile(priors()[,4],c(0.025,0.975)), lty=3, lwd=3,col="black")
+#         p_all = grid.arrange(p1, p2, p3, p4, ncol=2)
+#         print(p_all)
       }
     )
-    
-    
+
+
     output$all_posterior = renderPlot(
       {
         #Check the number of selected rows that construct the posterior distribution
         cat("Post: ",dim(posterior()),"\n")
-        
-        #par(mfrow=c(1,4),mar=c(15,3,4,1))
+
+        par(mfrow=c(1,4),mar=c(15,3,4,1))
         #posterior for n_sock
-        q1 = ggplot(posterior(), aes(x=total)) + 
-          geom_histogram(fill='#619CFF') + 
-          geom_vline(aes(xintercept=median(total)), linetype=5) + 
-          geom_rect(aes(xmin=0, xmax=unname(quantile(total, 0.025)), 
-                        ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
-          geom_rect(aes(xmin=unname(quantile(total, 0.975)), xmax=Inf, 
-                        ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
-        #hist(posterior()[,1],  main="Posterior on n_socks",col="blue",xlab="")
-        #abline(v = median(posterior()[,1]), lty = 2, col = "red",lwd=3)
-        #abline(v = quantile(posterior()[,1],c(0.025,0.975)), lty=3,lwd=3, col="black")
+#         q1 = ggplot(posterior(), aes(x=total)) +
+#           geom_histogram(fill='#619CFF') +
+#           geom_vline(aes(xintercept=median(total)), linetype=5) +
+#           geom_rect(aes(xmin=0, xmax=unname(quantile(total, 0.025)),
+#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
+#           geom_rect(aes(xmin=unname(quantile(total, 0.975)), xmax=Inf,
+#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
+        hist(posterior()[,1],  main="Posterior on n_socks",col="blue",xlab="")
+        abline(v = median(posterior()[,1]), lty = 2, col = "red",lwd=3)
+        abline(v = quantile(posterior()[,1],c(0.025,0.975)), lty=3,lwd=3, col="black")
         #posterior for prop_pairs
-        q2 = ggplot(posterior(), aes(x=prop)) + 
-          geom_histogram(fill='#619CFF') + 
-          geom_vline(aes(xintercept=median(prop)), linetype=5) + 
-          geom_rect(aes(xmin=0, xmax=unname(quantile(prop, 0.025)), 
-                        ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
-          geom_rect(aes(xmin=unname(quantile(prop, 0.975)), xmax=Inf, 
-                        ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
-        #hist(posterior()[,2], main="Posterior on prop_pairs",col="blue",xlab="")
-        #abline(v = median(posterior()[,2]), lty = 2, col = "red",lwd=3)
-        #abline(v = quantile(posterior()[,2],c(0.025,0.975)), lty=3,lwd=3,col="black")
+#         q2 = ggplot(posterior(), aes(x=prop)) +
+#           geom_histogram(fill='#619CFF') +
+#           geom_vline(aes(xintercept=median(prop)), linetype=5) +
+#           geom_rect(aes(xmin=0, xmax=unname(quantile(prop, 0.025)),
+#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
+#           geom_rect(aes(xmin=unname(quantile(prop, 0.975)), xmax=Inf,
+#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
+        hist(posterior()[,2], main="Posterior on prop_pairs",col="blue",xlab="")
+        abline(v = median(posterior()[,2]), lty = 2, col = "red",lwd=3)
+        abline(v = quantile(posterior()[,2],c(0.025,0.975)), lty=3,lwd=3,col="black")
         #posterior for n_pairs
-        q3 = ggplot(posterior(), aes(x=n_pair)) + 
-          geom_histogram(fill='#619CFF') + 
-          geom_vline(aes(xintercept=median(n_pair)), linetype=5) + 
-          geom_rect(aes(xmin=0, xmax=unname(quantile(n_pair, 0.025)), 
-                        ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
-          geom_rect(aes(xmin=unname(quantile(n_pair, 0.975)), xmax=Inf, 
-                        ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
-        #hist(posterior()[,3], main="Posterior on n_pairs",col="blue",xlab="")
-        #abline(v = median(posterior()[,3]), lty = 2, col = "red",lwd=3)
-        #abline(v = quantile(posterior()[,3],c(0.025,0.975)), lty=3,lwd=3,col="black")
+#         q3 = ggplot(posterior(), aes(x=n_pair)) +
+#           geom_histogram(fill='#619CFF') +
+#           geom_vline(aes(xintercept=median(n_pair)), linetype=5) +
+#           geom_rect(aes(xmin=0, xmax=unname(quantile(n_pair, 0.025)),
+#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
+#           geom_rect(aes(xmin=unname(quantile(n_pair, 0.975)), xmax=Inf,
+#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
+        hist(posterior()[,3], main="Posterior on n_pairs",col="blue",xlab="")
+        abline(v = median(posterior()[,3]), lty = 2, col = "red",lwd=3)
+        abline(v = quantile(posterior()[,3],c(0.025,0.975)), lty=3,lwd=3,col="black")
         #posterior for n_odd
-        q4 = ggplot(posterior(), aes(x=n_odd)) + 
-          geom_histogram(fill='#619CFF') + 
-          geom_vline(aes(xintercept=median(n_odd)), linetype=5) + 
-          geom_rect(aes(xmin=0, xmax=unname(quantile(n_odd, 0.025)), 
-                        ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
-          geom_rect(aes(xmin=unname(quantile(n_odd, 0.975)), xmax=Inf, 
-                        ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
-        #hist(posterior()[,4], main="Posterior on n_odd",col="blue",xlab="")
-        #abline(v = median(posterior()[,4]), lty = 2, col = "red",lwd=3)
-        #abline(v = quantile(posterior()[,4],c(0.025,0.975)), lty=3, lwd=3,col="black")
-        q_all = grid.arrange(q1, q2, q3, q4, ncol=2)
-        print(q_all)
+#         q4 = ggplot(posterior(), aes(x=n_odd)) +
+#           geom_histogram(fill='#619CFF') +
+#           geom_vline(aes(xintercept=median(n_odd)), linetype=5) +
+#           geom_rect(aes(xmin=0, xmax=unname(quantile(n_odd, 0.025)),
+#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
+#           geom_rect(aes(xmin=unname(quantile(n_odd, 0.975)), xmax=Inf,
+#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
+        hist(posterior()[,4], main="Posterior on n_odd",col="blue",xlab="")
+        abline(v = median(posterior()[,4]), lty = 2, col = "red",lwd=3)
+        abline(v = quantile(posterior()[,4],c(0.025,0.975)), lty=3, lwd=3,col="black")
+#         q_all = grid.arrange(q1, q2, q3, q4, ncol=2)
+#         print(q_all)
       }
     )
-    
-    
+
+
     output$postTable = renderTable(
       {
         dataFrame = data.frame("Medium" = c(round(median(posterior()[,1])),
                                             median(posterior()[,2]),
                                             round(median(posterior()[,3])),
                                             round(median(posterior()[,4]))),
-                               "95 Credible Interval Lower"=c(quantile(posterior()[,1],0.025), 
+                               "95 Credible Interval Lower"=c(quantile(posterior()[,1],0.025),
                                                               quantile(posterior()[,2],0.025),
                                                               quantile(posterior()[,3],0.025),
                                                               quantile(posterior()[,4],0.025)),
-                               "95 Credible Interval Upper"=c(quantile(posterior()[,1],0.975), 
+                               "95 Credible Interval Upper"=c(quantile(posterior()[,1],0.975),
                                                               quantile(posterior()[,2],0.975),
                                                               quantile(posterior()[,3],0.975),
                                                               quantile(posterior()[,4],0.975)))
