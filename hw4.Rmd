@@ -24,4 +24,4 @@ To implement ABC, user-specified hyperparameters are used to generate data the t
 
 **Task 2**
 
-Blahblahblah
+The second portion of this assignment involves optimizing the code for speed. Despite the use of 'Tiny Data', the ABC approach is notoriously sluggish and inefficient. To obtain a manageable run time, we took two steps. First, we leverage the power of parallel processing in the generation of all simulated priors. This is accomplished by breaking the user-specified number of simulations into 10 sets and simultaneously feeding each to multiple cores via `mclapply`, before unlisting the result. Second, we take a very similar tactic when feeding the priors through the generative model, splitting them into 8 subsets and running `mclapply`.
