@@ -4,270 +4,190 @@ require(ggplot2)
 require(gridExtra)
 
 shinyServer(
-  function(input, output, session)
-  {
+  function(input, output, session) {
     observe(
       {
-        updateSliderInput(session,"n_paired", max = round(floor(input$n_total/ 2)))
-
+        updateSliderInput(session, 'n_paired', max=round(floor(input$n_total/2)))
       }
     )
 
     priors = reactive(
       {
-
-        #About n_socks, the number of socks in Karl Broman???s laundry
-        #must be positive and discrete.
-        #It is reasonable to choose a Poisson distribution as a prior
-        #since it is used widely for "count" data.
-        #Furthermore, we can use the negative binomial prior.
+        # Generate sock totals given user-specified priors constrained to discrete, positive values,
+        # with speed enhanced by parallel processing in 10 batches.
         d_n_sock = integer()
-        if (input$total_prior == "pois")
-        {
-          d_n_sock = unlist(mclapply(1:10,
-                                     function(x) rpois(input$n_sims/10, input$total_lambda),
-                                     mc.cores = 24))
-          #d_n_sock = rpois(input$n_sims, input$total_lambda)
+        if(input$total_prior=='pois') {
+          d_n_sock = unlist(mclapply(1:10, function(x) {
+              rpois(input$n_sims/10, input$total_lambda)
+            }, mc.cores=24))
         } else {
           size1 = -input$total_mu^2 / (input$total_mu - input$total_sd^2)
-          d_n_sock = unlist(mclapply(1:10,
-                                     function(x) rnbinom(input$n_sims/10,mu = input$total_mu, size = size1),
-                                     mc.cores = 24))
-          #d_n_sock = rnbinom(input$n_sims,mu = input$total_mu, size = size1)
+          d_n_sock = unlist(mclapply(1:10, function(x) {
+              rnbinom(input$n_sims/10, mu=input$total_mu, size=size1)
+            }, mc.cores=24))
         }
 
-        #Instead of putting priors on n_paired and the resulting n_odd, we can put prior on
-        #the proportion of paired socks.
-        #Since proportion should be bigger than 0 and smaller than 1, we can use beta distribution
-        #and truncated normal distribution (0 to 1)
+        # Generate pair proportions given user-specified priors constrained to fall on [0,1], with
+        # speed enhanced by parallel processing in 10 batches.
         d_prop_pair = numeric()
-        if (input$prop_prior == "beta")
-        {
-          #d_prop_pair = unlist(mclapply(1:10, function(x) mcparallel(rbeta(input$n_sims/10, input$prop_alpha, input$prop_beta)),
-          #                              mc.cores = 24))
-          d_prop_pair = unlist(mclapply(1:10, function(x) rbeta(input$n_sims/10, input$prop_alpha, input$prop_beta),
-                                        mc.cores = 24))
-          #d_prop_pair = rbeta(input$n_sims, input$prop_alpha, input$prop_beta)
+        if(input$prop_prior=='beta') {
+          d_prop_pair = unlist(mclapply(1:10, function(x) {
+              rbeta(input$n_sims/10, input$prop_alpha, input$prop_beta) 
+            }, mc.cores=24))
         } else {
-          d_prop_pair = unlist(mclapply(1:10, function(x) rtruncnorm(input$n_sims/10,
-                                                                                0,1,input$prop_mu,input$prop_sigma),
-                                    mc.cores = 24))
-          #d_prop_pair = unlist(mclapply(1:10, function(x) rtruncnorm(input$n_sims/10,
-          #                                                           0,1,input$prop_mu,input$prop_sigma),
-          #                              mc.cores = 24))
-          #d_prop_pair = rtruncnorm(input$n_sims,0,1,input$prop_mu,input$prop_sigma)
+          d_prop_pair = unlist(mclapply(1:10, function(x) {
+              rtruncnorm(input$n_sims/10, 0, 1, input$prop_mu, input$prop_sigma)
+            }, mc.cores=24))
         }
 
-        #With the prior on proportion, we can easily calculate the priors for n_pair
-        #and n_odd. Thus we can get four prior distributions where these two are what
-        #we most care about. By simulation afterward and picking out the rows with same
-        #number of pairs as the user input, we can pickout the rows with these four parameters
-        #and get the posterior distribution based on the picked rows.
+        # Given priors on the proportion of paired socks, `d_prop_pair`, and the total number of 
+        # socks, `d_n_sock`, we can easily derive priors for the number of pairs, `n_pair`, and 
+        # the number of singletons, `n_odd`.
         d_pair = integer()
-        d_pair = round(floor(d_n_sock / 2)*d_prop_pair)
-
+        d_pair = round(floor(d_n_sock / 2) * d_prop_pair)
         d_odd = integer()
-        d_odd = d_n_sock - d_pair *2
+        d_odd = d_n_sock - d_pair * 2
 
-        data.frame(total = d_n_sock, prop = d_prop_pair, n_pair = d_pair, n_odd = d_odd)
+        # Combine these priors into a data frame.
+        data.frame(total=d_n_sock, prop=d_prop_pair, n_pair=d_pair, n_odd=d_odd)
       }
     )
 
-    #The purpose of simulation is to create a column of simulated number of pairs,
-    #which can be used to be compared with user-input "n_paired" to get the rows
-    #for getting the posterior distribution
+    # Simulate the sock-picking process under user-specified priors for later comparison.
     sims = reactive (
       {
-        gen_model = function(prior_n_socks,prior_prop_pairs, prior_pair, prior_odd)
-        {
-          #n_picked <- input$n_unique+2*input$n_paired
-
-          # Simulating picking out n_picked socks
-          socks <- rep(seq_len(prior_pair +  prior_odd), rep(c(2, 1),
-                                                             c(prior_pair, prior_odd)))
-
-          picked_socks <- sample(socks, size =  min(input$n_total, prior_n_socks))
-
-          sock_counts <- table(picked_socks)
-
-          result=sum(sock_counts == 2)
-
-          #             c(unique = sum(sock_counts == 1), pairs = sum(sock_counts == 2),
-          #           n_socks = prior_n_socks, n_pairs = prior_pair, n_odd = prior_odd,
-          #           prop_pairs = prior_prop_pairs)
-
-          return(result)
+        # Simulate the sock-picking process and return the number of pairs.
+        gen_model = function(prior_n_socks, prior_prop_pairs, prior_pair, prior_odd) {
+          socks = rep(seq_len(prior_pair + prior_odd), 
+                      rep(c(2, 1), c(prior_pair, prior_odd)))
+          picked_socks = sample(socks, size=min(input$n_total, prior_n_socks))
+          sock_counts = table(picked_socks)
+          return(sum(sock_counts==2))
         }
 
-        #Creating a column of simulated number of pairs so as to be used later to
-        #pick out the rows for posterior distribution
-        #mclapply(priors(), function(x) gen_model(x[1],x[2],x[3],x[4]), mc.cores = 10)
-
-        n_chuncks = 8
-        steps = floor(seq(1,input$n_sims,len=n_chuncks+1))
-
+        # Separate the data into 8 subsets for parallel processing via mclapply.
+        n_chunks = 8
+        steps = floor(seq(1, input$n_sims, len=n_chunks+1))
         l = list()
         l[[1]] = priors()[steps[1]:steps[2],]
-        for(i in 2:n_chuncks)
-        {
+        for(i in 2:n_chunks) {
           l[[i]] = priors()[(steps[i]+1):steps[i+1],]
         }
 
-
+        # Run the data, broken into subsets, through the generative model in parallel.
         unlist(mclapply(l, function(x) apply(x,1, function(x) gen_model(x[1],x[2],x[3],x[4])), mc.cores = 8))
-
-        #apply(priors(),1, function(x) gen_model(x[1],x[2],x[3],x[4]))
       }
     )
 
-    #pick out the rows from the dataframe result from prior() where "pairs" "variable"
-    #equals the number of pairs user input, aka, n_paired
-    #Later on the data frame drawn like this (with the same "pair" values)
-    #is used to get the posterior distrbution for the four variables
+    # Match the simulated sock data to the user-specified number of found pairs.
     posterior = reactive(
       {
-        #sock_sim=t(sims())
-        priors()[sims()==input$n_paired, ]
-
+        priors()[sims()==input$n_paired,]
       }
     )
 
+    # Create a data frame containing the 95% CI and median for all priors.
+    pp = reactive(
+      {
+        p = as.data.frame(apply(priors(), 2, quantile, c(0.025, 0.5, 0.975)))
+        colnames(p) = c('V1', 'V2', 'V3', 'V4')
+        p
+      }
+    )
+    
+    # Plot all prior distributions, with lines marking the 95% CI and median values.
     output$all_prior = renderPlot(
       {
-        par(mfrow=c(1,4),mar=c(15,3,4,1))
-        #Prior for n_sock
-#         p1 = ggplot(priors(), aes(x=total)) +
-#           geom_histogram(fill='#00BA38') +
-#           geom_vline(aes(xintercept=median(total)), linetype=5) +
-#           geom_rect(aes(xmin=0, xmax=unname(quantile(total, 0.025)),
-#                    ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
-#           geom_rect(aes(xmin=unname(quantile(total, 0.975)), xmax=Inf,
-#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
-        hist(priors()[,1],  main="Prior on n_socks",col="green",xlab="")
-        abline(v = median(priors()[,1]), lty = 2, col = "red", lwd=3)
-        abline(v = quantile(priors()[,1],c(0.025,0.975)), lty=3, lwd=3, col="black")
-        #Prior for prop_pairs
-#         p2 = ggplot(priors(), aes(x=prop)) +
-#           geom_histogram(fill='#00BA38') +
-#           geom_vline(aes(xintercept=median(prop)), linetype=5) +
-#           geom_rect(aes(xmin=0, xmax=unname(quantile(prop, 0.025)),
-#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
-#           geom_rect(aes(xmin=unname(quantile(prop, 0.975)), xmax=Inf,
-#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
-        hist(priors()[,2],  main="Prior on prop_pairs",col="green",xlab="")
-        abline(v = median(priors()[,2]), lty = 2, col = "red", lwd=3)
-        abline(v = quantile(priors()[,2],c(0.025,0.975)), lty=3, col="black",lwd=3)
-        #Prior for n_pairs
-#         p3 = ggplot(priors(), aes(x=n_pair)) +
-#           geom_histogram(fill='#00BA38') +
-#           geom_vline(aes(xintercept=median(n_pair)), linetype=5) +
-#           geom_rect(aes(xmin=0, xmax=unname(quantile(n_pair, 0.025)),
-#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
-#           geom_rect(aes(xmin=unname(quantile(n_pair, 0.975)), xmax=Inf,
-#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
-        hist(priors()[,3],  main="Resulting prior on n_pairs",col="green",xlab="")
-        abline(v = median(priors()[,3]), lty = 2, col = "red", lwd=3)
-        abline(v = quantile(priors()[,3],c(0.025,0.975)), lty=3,lwd=3, col="black")
-        #Prior for n_odd
-#         p4 = ggplot(priors(), aes(x=n_odd)) +
-#           geom_histogram(fill='#00BA38') +
-#           geom_vline(aes(xintercept=median(n_odd)), linetype=5) +
-#           geom_rect(aes(xmin=0, xmax=unname(quantile(n_odd, 0.025)),
-#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
-#           geom_rect(aes(xmin=unname(quantile(n_odd, 0.975)), xmax=Inf,
-#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
-        hist(priors()[,4], main="Resulting prior on n_odd",col="green",xlab="")
-        abline(v = median(priors()[,4]), lty = 2, col = "red", lwd=3)
-        abline(v = quantile(priors()[,4],c(0.025,0.975)), lty=3, lwd=3,col="black")
-#         p_all = grid.arrange(p1, p2, p3, p4, ncol=2)
-#         print(p_all)
+        p1 = ggplot(priors(), aes(x=total)) +
+          geom_histogram(fill='#00BA38') + 
+          labs(x=NULL, y=NULL, title='Total number of socks') +
+          geom_vline(data=pp(), aes(xintercept=V1), linetype=c(3,5,3))
+        p2 = ggplot(priors(), aes(x=prop)) +
+          geom_histogram(fill='#00BA38') +
+          labs(x=NULL, y=NULL, title='Paired proportion of socks') +
+          geom_vline(data=pp(), aes(xintercept=V2), linetype=c(3,5,3))
+        p3 = ggplot(priors(), aes(x=n_pair)) +
+          geom_histogram(fill='#00BA38') +
+          labs(x=NULL, y=NULL, title='Number of sock pairs') +
+          geom_vline(data=pp(), aes(xintercept=V3), linetype=c(3,5,3))
+        p4 = ggplot(priors(), aes(x=n_odd)) +
+          geom_histogram(fill='#00BA38') +
+          labs(x=NULL, y=NULL, title='Number of singletons') +
+          geom_vline(data=pp(), aes(xintercept=V4), linetype=c(3,5,3))
+        p_all = grid.arrange(p1, p2, p3, p4, ncol=2)
+        print(p_all)
       }
     )
-
-
+    
+    # Create a data frame containing the 95% CI and median for all posteriors.
+    qq = reactive(
+      {
+        q = as.data.frame(apply(posterior(), 2, quantile, c(0.025, 0.5, 0.975)))
+        colnames(q) = c('V1', 'V2', 'V3', 'V4')
+        q
+      }
+    )
+    
+    # Plot all posterior distributions, with lines marking the 95% CI and median values.
     output$all_posterior = renderPlot(
       {
-        #Check the number of selected rows that construct the posterior distribution
-        cat("Post: ",dim(posterior()),"\n")
-
-        par(mfrow=c(1,4),mar=c(15,3,4,1))
-        #posterior for n_sock
-#         q1 = ggplot(posterior(), aes(x=total)) +
-#           geom_histogram(fill='#619CFF') +
-#           geom_vline(aes(xintercept=median(total)), linetype=5) +
-#           geom_rect(aes(xmin=0, xmax=unname(quantile(total, 0.025)),
-#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
-#           geom_rect(aes(xmin=unname(quantile(total, 0.975)), xmax=Inf,
-#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
-        hist(posterior()[,1],  main="Posterior on n_socks",col="blue",xlab="")
-        abline(v = median(posterior()[,1]), lty = 2, col = "red",lwd=3)
-        abline(v = quantile(posterior()[,1],c(0.025,0.975)), lty=3,lwd=3, col="black")
-        #posterior for prop_pairs
-#         q2 = ggplot(posterior(), aes(x=prop)) +
-#           geom_histogram(fill='#619CFF') +
-#           geom_vline(aes(xintercept=median(prop)), linetype=5) +
-#           geom_rect(aes(xmin=0, xmax=unname(quantile(prop, 0.025)),
-#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
-#           geom_rect(aes(xmin=unname(quantile(prop, 0.975)), xmax=Inf,
-#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
-        hist(posterior()[,2], main="Posterior on prop_pairs",col="blue",xlab="")
-        abline(v = median(posterior()[,2]), lty = 2, col = "red",lwd=3)
-        abline(v = quantile(posterior()[,2],c(0.025,0.975)), lty=3,lwd=3,col="black")
-        #posterior for n_pairs
-#         q3 = ggplot(posterior(), aes(x=n_pair)) +
-#           geom_histogram(fill='#619CFF') +
-#           geom_vline(aes(xintercept=median(n_pair)), linetype=5) +
-#           geom_rect(aes(xmin=0, xmax=unname(quantile(n_pair, 0.025)),
-#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
-#           geom_rect(aes(xmin=unname(quantile(n_pair, 0.975)), xmax=Inf,
-#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
-        hist(posterior()[,3], main="Posterior on n_pairs",col="blue",xlab="")
-        abline(v = median(posterior()[,3]), lty = 2, col = "red",lwd=3)
-        abline(v = quantile(posterior()[,3],c(0.025,0.975)), lty=3,lwd=3,col="black")
-        #posterior for n_odd
-#         q4 = ggplot(posterior(), aes(x=n_odd)) +
-#           geom_histogram(fill='#619CFF') +
-#           geom_vline(aes(xintercept=median(n_odd)), linetype=5) +
-#           geom_rect(aes(xmin=0, xmax=unname(quantile(n_odd, 0.025)),
-#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey') +
-#           geom_rect(aes(xmin=unname(quantile(n_odd, 0.975)), xmax=Inf,
-#                         ymin=0, ymax=Inf), alpha=0.002, fill='lightgrey')
-        hist(posterior()[,4], main="Posterior on n_odd",col="blue",xlab="")
-        abline(v = median(posterior()[,4]), lty = 2, col = "red",lwd=3)
-        abline(v = quantile(posterior()[,4],c(0.025,0.975)), lty=3, lwd=3,col="black")
-#         q_all = grid.arrange(q1, q2, q3, q4, ncol=2)
-#         print(q_all)
+        q1 = ggplot(posterior(), aes(x=total)) +
+          geom_histogram(fill='#619CFF') + 
+          labs(x=NULL, y=NULL, title='Total number of socks') +
+          geom_vline(data=qq(), aes(xintercept=V1), linetype=c(3,5,3))
+        q2 = ggplot(posterior(), aes(x=prop)) +
+          geom_histogram(fill='#619CFF') + 
+          labs(x=NULL, y=NULL, title='Paired proportion of socks') +
+          geom_vline(data=qq(), aes(xintercept=V2), linetype=c(3,5,3))
+        q3 = ggplot(posterior(), aes(x=n_pair)) +
+          geom_histogram(fill='#619CFF') + 
+          labs(x=NULL, y=NULL, title='Number of sock pairs') +
+          geom_vline(data=qq(), aes(xintercept=V3), linetype=c(3,5,3))
+        q4 = ggplot(posterior(), aes(x=n_odd)) +
+          geom_histogram(fill='#619CFF') + 
+          labs(x=NULL, y=NULL, title='Number of singletons') +
+          geom_vline(data=qq(), aes(xintercept=V4), linetype=c(3,5,3))
+        q_all = grid.arrange(q1, q2, q3, q4, ncol=2)
+        print(q_all)
       }
     )
-
-
+    
+    # Summarize ABC output in tabular format.
     output$postTable = renderTable(
       {
-        dataFrame = data.frame("Medium" = c(round(median(posterior()[,1]),digits = 0),
-                                            median(posterior()[,2]),
-                                            round(median(posterior()[,3]),digits = 0),
-                                            round(median(posterior()[,4]),digits = 0)),
-                               "95 Credible Interval Lower"=c(quantile(posterior()[,1],0.025),
-                                                              quantile(posterior()[,2],0.025),
-                                                              quantile(posterior()[,3],0.025),
-                                                              quantile(posterior()[,4],0.025)),
-                               "95 Credible Interval Upper"=c(quantile(posterior()[,1],0.975),
-                                                              quantile(posterior()[,2],0.975),
-                                                              quantile(posterior()[,3],0.975),
-                                                              quantile(posterior()[,4],0.975)))
-        colnames(dataFrame)=c("Median", "95% Credible Interval Lower Bound", "95% Credible Interval Upper Bound")
-        rownames(dataFrame) = c("Number of Socks", "Proportion of Pairs", "Number of Pairs",
-                                "Number of Odd")
-        dataFrame
-      },align='cccc'
+        df = data.frame(low=apply(posterior(), 2, quantile, 0.025),
+                        med=c(as.integer(median(posterior()[,1])),
+                              median(posterior()[,2]),
+                              as.integer(median(posterior()[,3])),
+                              as.integer(median(posterior()[,4]))),
+                        high=apply(posterior(), 2, quantile, 0.975))
+        colnames(df) = c('95% Credible Interval Lower Bound', 'Median', 
+                         '95% Credible Interval Upper Bound')
+        rownames(df) = c('Total Number of Socks', 'Paired Proportion', 'Number of Pairs',
+                         'Number of Singletons')
+        df
+      }, 
+      align='cccc'
     )
-    output$text1 <- renderText({paste("You have got", input$n_total,"socks.")})
-    output$text2 <- renderText({paste(input$n_paired,"of them are paired.")})
-    output$text3 <- renderText({paste("You can predict that there are",
-                                      round(median(posterior()[,1])), "socks in all.")})
-
-    output$text4 <- renderText(if (input$showtruevalue==T){"The true number of total socks is 45 with 21 pairs and 3 singletons."}
-                               else{"(check the box on the left to see the true values of the 11 singletons case)"}
-                               )
-    }
+    
+    # Summarize ABC output in verbal form.
+    output$text1 = renderText(
+      {
+        paste('After pulling', input$n_total, "socks out of the dryer, you've found", input$n_paired, 
+              'pairs. Your best guess is', round(median(posterior()[,1])), 'socks in total.')
+      }
+    )
+    
+    # Reveal the outcome from our motivating example.
+    output$text2 = renderText(
+      {
+        if(input$showtruevalue==T) {
+          'There were 21 pairs and 3 singletons, for a total of 45 socks.'
+        } else {
+          "(Check the box on the side panel in order to reveal how many socks were in Broman's laundry.)"
+        }
+      }
+    )
+    
+  }
 )
