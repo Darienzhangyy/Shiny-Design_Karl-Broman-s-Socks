@@ -5,7 +5,6 @@ date: "November 12, 2015"
 output: html_document
 ---
 
-
 **Task 1**
 
 The banality of sock laundering does not typically inspire creative data analyses. A tweet from biostatistician Karl Broman, however, fired up nerds the world over. Noting that every single one of the first 11 socks removed from the dryer belonged to a different pair, Broman remarked that this fact had implications for the total number of socks in the wash. One of the more interesting analyses born out of Broman's tweet utilized Approximate Bayesian Computing (ABC) to tackle the ultimate question: How many socks, pairs and singletons, do we expect are in the laundry? Reproducing and extending the original analysis, we have created a Shiny app which (1) allows users dynamic control over the model's priors, (2) graphically displays the prior and posterior distributions, and (3) summarizes the posterior distribution to present the number of socks - in total, in pairs, and singletons.   
@@ -24,35 +23,46 @@ To implement ABC, user-specified hyperparameters are used to generate data the t
 
 **Task 2**
 
-By implementing Approximate Bayesian Computation, we can successfully analyze how total many socks are there. However, large huge number of simulation and computation slow down our analysis. To improve the efficiency, we choose to use parallelization to make our APP speed up.
+The second portion of this assignment involves optimizing the code for speed. Despite the use of 'Tiny Data', the ABC approach is notoriously sluggish and inefficient. To obtain a manageable run time, we took two steps. First, we leveraged the power of parallel processing in the generation of all simulated priors. This was accomplished by breaking the user-specified number of simulations into 10 sets and simultaneously feeding each to multiple cores via `mclapply`. `mclapply` is a parallelized version of lapply - meaning that it element-wise applies the specified function to the supplied list - that allows for a larger task to be broken into smaller tasks and doled out to separate processors. The sample code below demonstrates how this was implemented.
 
-mclapply is a parallelized version of lapply, it returns a list of the same length as X, each element of which is the result of applying FUN to the corresponding element of X.
-
-```{r, results=FALSE, error=FALSE, warning=FALSE}
+```{r, eval=F, results=FALSE, error=FALSE, warning=FALSE}
 library(parallel)
-#parallelize number of socks
-d_n_sock = unlist(mclapply(1:10,function(x) 
-                             rpois(input$n_sims/10, input$total_lambda),
-                                     mc.cores = 24))
-d_n_sock = unlist(mclapply(1:10, function(x) rnbinom(input$n_sims/10,
-                             mu =input$total_mu,
-                              size=size1),mc.cores = 24))
-#parallelize number of pair of socks
-d_prop_pair = unlist(mclapply(1:10, function(x) rbeta(input$n_sims/10,
-                                       input$prop_alpha, input$prop_beta),
-                                        mc.cores = 24))
-d_prop_pair = unlist(mclapply(1:10, function(x) rtruncnorm(input$n_sims/10,
-                                       0,1,input$prop_mu,input$prop_sigma),
-                                    mc.cores = 24))
+
+# Parallelize the total number of socks.
+
+# Poisson:
+d_n_sock = unlist(mclapply(1:10, function(x) {
+    rpois(input$n_sims/10, input$total_lambda)
+  }, mc.cores=24))
+
+# Negative binomial:
+size1 = -input$total_mu^2 / (input$total_mu - input$total_sd^2)
+d_n_sock = unlist(mclapply(1:10, function(x) {
+    rnbinom(input$n_sims/10, mu=input$total_mu, size=size1)
+  }, mc.cores=24))
+
+# Parallelize the number of paired socks.
+
+# Beta:
+d_prop_pair = unlist(mclapply(1:10, function(x) {
+    rbeta(input$n_sims/10, input$prop_alpha, input$prop_beta) 
+  }, mc.cores=24))
+
+# Truncated normal:
+d_prop_pair = unlist(mclapply(1:10, function(x) {
+    rtruncnorm(input$n_sims/10, 0, 1, input$prop_mu, input$prop_sigma)
+  }, mc.cores=24))
 ```
 
+Second, we take a very similar tactic when feeding the priors through the generative model, splitting them into 8 subsets and running `mclapply`. This is demonstrated in the code block below.
 
-Also, we split prior into 8 chunks as list l, and then exert mclapply to, which would accelerate the speed of gen_model function. 
-
-```{r, results=FALSE, error=FALSE, warning=FALSE}
-#use parallelization to execute function
-unlist(mclapply(l, function(x) apply(x,1, function(x) gen_model(x[1],x[2],x[3],x[4])), mc.cores = 8))
+```{r, eval=F, results=FALSE, error=FALSE, warning=FALSE}
+# Parallelize the processing of priors through the generative model.
+unlist(mclapply(l, function(x) {
+  apply(x, 1, function(x) {
+    gen_model(x[1],x[2],x[3],x[4])
+  })
+}, mc.cores=8))
 ```
 
-Then, when we run the App, parallelization makes our App much faster than before.
-
+In combination, these parallelization efforts significantly speed up the run time of our app.

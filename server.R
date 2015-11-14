@@ -75,7 +75,11 @@ shinyServer(
         }
 
         # Run the data, broken into subsets, through the generative model in parallel.
-        unlist(mclapply(l, function(x) apply(x,1, function(x) gen_model(x[1],x[2],x[3],x[4])), mc.cores = 8))
+        unlist(mclapply(l, function(x) {
+          apply(x, 1, function(x) {
+            gen_model(x[1],x[2],x[3],x[4])
+          })
+        }, mc.cores=8))
       }
     )
 
